@@ -35,7 +35,6 @@
     --glass-edge: rgba(255,255,255,.8); --glass-edge-low: rgba(29,32,37,.07); --glass-edge-in: rgba(29,32,37,.14); --glass-dash: rgba(29,32,37,.24);
     --glass-hi: rgba(255,255,255,.95); --glass-low: rgba(29,32,37,.06); --field: rgba(255,255,255,.7);
     --glass-shadow: 0 0 0 1px rgba(29,32,37,.05), 0 1px 2px rgba(29,32,37,.05), 0 18px 44px rgba(70,84,110,.15);
-    --wm-a: #b8662a; --wm-b: #0a86aa;
     --sheen: .16; --heart: #e0455a; --blob1: #ffbf8a; --blob2: #62dcf7; --aura-op: .62; --card-solid: #ffffff; --card-solid-2: #f4efe8;
   }
   :root[data-theme="dark"] {
@@ -54,7 +53,6 @@
     --glass-edge: rgba(255,255,255,.17); --glass-edge-low: rgba(255,255,255,.07); --glass-edge-in: rgba(255,255,255,.14); --glass-dash: rgba(255,255,255,.3);
     --glass-hi: rgba(255,255,255,.28); --glass-low: rgba(255,255,255,.06); --field: rgba(0,0,0,.26);
     --glass-shadow: 0 20px 52px rgba(0,0,0,.45);
-    --wm-a: #edc298; --wm-b: #38d6f5;
     --sheen: .07; --heart: #ff7d8d; --blob1: #edc298; --blob2: #1fa8d8; --aura-op: .5; --card-solid: #2a313a; --card-solid-2: #323a45;
   }
   * { box-sizing: border-box; }
@@ -358,8 +356,9 @@
   .top { background: transparent; border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 10px 12px 0; top: 0; }
   .top-in { border-radius: 18px; padding: 7px 12px; max-width: 1160px; }
   .logo-img { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--cyan) 45%, transparent)); }
-  .brand { gap: 8px; }
-  .bname { font-weight: 800; font-size: 1.05rem; letter-spacing: -.03em; }
+  .brand { gap: 9px; }
+  .bname { height: 22px; width: auto; display: block; }
+  @media (max-width: 560px) { .logo-img { display: none; } .bname { height: 20px; } }   /* phones: the wordmark alone, so the bar never overflows */
   @media (min-width: 1021px) { .viewer { top: 84px; height: calc(100vh - 104px); } }
 
   /* glossy buttons: peach (main) and cyan (download and secondary actions) */
@@ -391,11 +390,10 @@
   /* hero: the Clyro name, tagline and the four things it is for */
   .hero { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 4px auto 22px; text-align: left; }
   .hero-logo { width: 88px; height: 88px; object-fit: contain; flex: none; filter: drop-shadow(0 10px 26px color-mix(in srgb, var(--cyan) 42%, transparent)); }
-  .wordmark { margin: 0; font-size: clamp(2.1rem, 5.2vw, 3rem); font-weight: 850; letter-spacing: -.05em; line-height: 1;
-    background: linear-gradient(100deg, var(--wm-a) 10%, var(--wm-b) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+  .wordmark { display: block; height: clamp(34px, 5.5vw, 46px); width: auto; margin: 0 0 2px; filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--cyan) 30%, transparent)); }
   .tagline { margin: 6px 0 0; font-size: clamp(1rem, 2.2vw, 1.2rem); font-weight: 650; letter-spacing: -.015em; }
   body.working .hero { display: none; }
-  @media (max-width: 560px) { .hero { flex-direction: column; text-align: center; gap: 8px; margin-bottom: 16px; } .hero-logo { width: 72px; height: 72px; } .logo-img { width: 28px; height: 28px; } }
+  @media (max-width: 560px) { .hero { flex-direction: column; text-align: center; gap: 8px; margin-bottom: 16px; } .wordmark { margin-left: auto; margin-right: auto; } .hero-logo { width: 72px; height: 72px; } .logo-img { width: 28px; height: 28px; } }
 
   /* no blur support, or "reduce transparency" requested: calm, opaque panels instead */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -415,7 +413,7 @@
 <header class="top">
   <div class="top-in">
     <a class="brand" href="#compress" aria-label="Clyro home">
-      <img class="logo-img" src="/static/logo.png" alt="" width="32" height="32"><span class="bname">Clyro</span>
+      <img class="logo-img" src="/static/logo.png" alt="" width="32" height="32"><img class="bname" src="/static/clyro-wordmark-sm.png" alt="Clyro" width="260" height="91">
     </a>
     <nav class="tabs" role="tablist" aria-label="Tools">
       <button type="button" role="tab" id="tab-compress" aria-selected="true" aria-controls="view-compress">
@@ -435,7 +433,7 @@
   <section class="hero" id="hero">
     <img class="hero-logo" src="/static/logo-384.png" alt="Clyro logo" width="88" height="88">
     <div>
-      <p class="wordmark" aria-hidden="true">Clyro</p>
+      <img class="wordmark" src="/static/clyro-wordmark.png" alt="Clyro" width="640" height="224">
       <p class="tagline">Your documents. Simplified.</p>
     </div>
   </section>
