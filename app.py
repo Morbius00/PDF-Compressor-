@@ -141,7 +141,9 @@ def api_pdf(rid: str):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5050"))
-    reload = os.environ.get("RELOAD", "1") == "1"  # restart by itself when the code changes
+    hosted = bool(os.environ.get("RENDER"))  # set by Render; a host must listen on every interface, not just 127.0.0.1
+    host = os.environ.get("HOST", "0.0.0.0" if hosted else "127.0.0.1")
+    reload = os.environ.get("RELOAD", "0" if hosted else "1") == "1"  # restart by itself when the code changes
     if not reload or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        print(f"\n  Clyro is running at http://127.0.0.1:{port}\n  Your documents. Simplified. (files stay on this device)\n")
-    app.run(host="127.0.0.1", port=port, threaded=True, use_reloader=reload)
+        print(f"\n  Clyro is running at http://{host}:{port}\n  Your documents. Simplified.\n")
+    app.run(host=host, port=port, threaded=True, use_reloader=reload)
