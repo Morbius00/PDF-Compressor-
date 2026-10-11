@@ -1,0 +1,10 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Your documents never belong in the repo: this tool is made for personal PDFs
+*.pdf

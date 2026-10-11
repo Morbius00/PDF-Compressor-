@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clyro · Your documents. Simplified.</title>
+<meta name="description" content="Clyro: your documents, simplified. Merge, edit, convert and compress PDFs privately on your own computer.">
+<meta name="theme-color" content="#f7f3ee">
+<script>
+  /* choose the theme before first paint so there is no flash: saved choice, else the system setting */
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem("pdftools-theme"); } catch (e) {}
+    var dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = saved === "light" || saved === "dark" ? saved : (dark ? "dark" : "light");
+  })();
+</script>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<style>
+  /* ---------- colour themes: peach #EDC298 (primary) + teal #04DAC2 (secondary), sampled from the reference ---------- */
+  :root {
+    color-scheme: light;
+    --bg: #f7f3ee; --bg2: #efe9e1; --card: #ffffff; --ink: #1d2025; --muted: #4f5864; --line: #e6dfd5; --line2: #d6cdc0;
+    --accent: #edc298; --accent-hover: #e6b685; --accent-ink: #1d2025; --accent-edge: #dcae7c; --accent-text: #7d420f;
+    --accent-soft: color-mix(in srgb, var(--accent) 26%, var(--card)); --accent-line: #e0b88b;
+    --teal: #04dac2; --teal-ink: #00201b; --teal-text: #00695c; --teal-soft: color-mix(in srgb, var(--teal) 15%, var(--card));
+    --good: var(--teal-text); --good-bg: var(--teal-soft);
+    --warn: #8a4a14; --warn-bg: color-mix(in srgb, var(--accent) 32%, var(--card));
+    --info: var(--teal-text); --info-bg: var(--teal-soft);
+    --bad: #b42338; --bad-bg: #fde8eb; --track: #e3dbd0; --focus: #00a896;
+    --shadow: 0 1px 2px rgba(29,32,37,.05), 0 8px 22px rgba(29,32,37,.07);
+    --cyan: #38d6f5; --cyan-ink: #00222b; --cyan-text: #0a6178;
+    --glass: rgba(255,255,255,.68); --glass-2: rgba(255,255,255,.62); --glass-strong: rgba(255,255,255,.9);
+    --glass-edge: rgba(255,255,255,.8); --glass-edge-low: rgba(29,32,37,.07); --glass-edge-in: rgba(29,32,37,.14); --glass-dash: rgba(29,32,37,.24);
+    --glass-hi: rgba(255,255,255,.95); --glass-low: rgba(29,32,37,.06); --field: rgba(255,255,255,.7);
+    --glass-shadow: 0 0 0 1px rgba(29,32,37,.05), 0 1px 2px rgba(29,32,37,.05), 0 18px 44px rgba(70,84,110,.15);
+    --wm-a: #b8662a; --wm-b: #0a86aa;
+    --sheen: .16; --heart: #e0455a; --blob1: #ffbf8a; --blob2: #62dcf7; --aura-op: .62; --card-solid: #ffffff; --card-solid-2: #f4efe8;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101215; --bg2: #242930; --card: #2a313a; --ink: #e5eaee; --muted: #b3bcc7; --line: #3a434c; --line2: #4a5560;
+    --accent: #edc298; --accent-hover: #f4d1ae; --accent-ink: #1d2025; --accent-edge: #edc298; --accent-text: #f7d9b6;
+    --accent-soft: color-mix(in srgb, var(--accent) 13%, var(--card)); --accent-line: #7d6851;
+    --teal: #04dac2; --teal-ink: #00140f; --teal-text: #04dac2; --teal-soft: color-mix(in srgb, var(--teal) 13%, var(--card));
+    --good: var(--teal-text); --good-bg: var(--teal-soft);
+    --warn: #edc298; --warn-bg: color-mix(in srgb, var(--accent) 14%, var(--card));
+    --info: var(--teal-text); --info-bg: var(--teal-soft);
+    --bad: #ff8a98; --bad-bg: #3c2229; --track: #3d4752; --focus: #04dac2;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 26px rgba(0,0,0,.34);
+    --cyan: #38d6f5; --cyan-ink: #00222b; --cyan-text: #93edfd;
+    --glass: rgba(44,53,64,.5); --glass-2: rgba(24,30,38,.52); --glass-strong: rgba(34,40,48,.88);
+    --glass-edge: rgba(255,255,255,.17); --glass-edge-low: rgba(255,255,255,.07); --glass-edge-in: rgba(255,255,255,.14); --glass-dash: rgba(255,255,255,.3);
+    --glass-hi: rgba(255,255,255,.28); --glass-low: rgba(255,255,255,.06); --field: rgba(0,0,0,.26);
+    --glass-shadow: 0 20px 52px rgba(0,0,0,.45);
+    --wm-a: #edc298; --wm-b: #38d6f5;
+    --sheen: .07; --heart: #ff7d8d; --blob1: #edc298; --blob2: #1fa8d8; --aura-op: .5; --card-solid: #2a313a; --card-solid-2: #323a45;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink); font-size: 15px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  button { font: inherit; color: inherit; }
+  svg { display: block; }
+  .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .banner { position: sticky; top: 0; z-index: 40; padding: 9px 16px; text-align: center; font-size: .86rem; font-weight: 550;
+    background: var(--warn-bg); color: var(--warn); border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
+  .banner code { padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 16%, transparent); font-size: .9em; }
+
+  /* ---------- top bar ---------- */
+  .top { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--bg) 84%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--line); }
+  .top-in { max-width: 1160px; margin: 0 auto; padding: 9px 16px; display: flex; align-items: center; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: .95rem; letter-spacing: -.015em; text-decoration: none; color: inherit; }
+  .tabs { display: inline-flex; gap: 2px; padding: 3px; margin-left: 6px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; }
+  .tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 0; background: transparent; border-radius: 9px;
+    color: var(--muted); font-weight: 600; font-size: .86rem; cursor: pointer; transition: background .15s, color .15s; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected=true] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .local { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .8rem; white-space: nowrap; }
+  .local .ic { color: var(--teal-text); width: 15px; height: 15px; }
+  .theme { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg2); border: 1px solid var(--line); border-radius: 11px; }
+  .theme button { width: 28px; height: 26px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+  .theme button:hover { color: var(--ink); }
+  .theme button[aria-pressed=true] { background: var(--card); color: var(--accent-text); box-shadow: 0 1px 3px rgba(0,0,0,.18), inset 0 0 0 1px var(--accent-line); }
+
+  main { max-width: 1160px; margin: 0 auto; padding: 28px 16px 60px; }
+  .intro { max-width: 640px; margin: 0 auto 22px; text-align: center; }
+  .has-ws .intro { text-align: left; margin: 0 0 18px; max-width: none; }
+  h1 { font-size: clamp(1.4rem, 2.7vw, 1.8rem); letter-spacing: -.03em; line-height: 1.18; margin: 0 0 6px; }
+  .intro p { margin: 0; color: var(--muted); font-size: .96rem; }
+
+  /* ---------- layout ---------- */
+  .work { max-width: 640px; margin: 0 auto; }
+  .work.has { max-width: none; display: grid; grid-template-columns: 440px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .col { min-width: 0; }
+  .col > * + * { margin-top: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 15px; padding: 18px; box-shadow: var(--shadow); }
+  .card h2, .card-h h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin: 0; }
+  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+
+  /* ---------- buttons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 15px; border-radius: 11px; cursor: pointer; font-size: .9rem;
+    border: 1px solid var(--line2); background: var(--card); font-weight: 600; text-decoration: none; transition: background .15s, border-color .15s, transform .05s, filter .15s; }
+  .btn:hover { background: var(--bg2); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn.primary { background: var(--accent); border-color: var(--accent-edge); color: var(--accent-ink); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn.primary:disabled { box-shadow: none; }
+  .btn.block { width: 100%; padding: 10px 18px; font-size: .95rem; margin-top: 14px; }
+  .btn.sm { padding: 5px 10px; font-size: .82rem; border-radius: 9px; }
+  .spin { width: 14px; height: 14px; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .75s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } .progress i, .skeleton { animation-duration: 3s; } html { scroll-behavior: auto; } }
+
+  /* ---------- drop zone ---------- */
+  .drop { display: block; width: 100%; text-align: center; padding: 42px 20px 36px; cursor: pointer; color: inherit; border-radius: 18px;
+    background: var(--card); border: 1.5px dashed var(--line2); box-shadow: var(--shadow); transition: transform .15s, border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop.over { transform: scale(1.01); border-color: var(--teal); }
+  .drop .orb { width: 52px; height: 52px; margin: 0 auto 13px; border-radius: 16px; display: grid; place-items: center; color: var(--accent-text);
+    background: var(--accent-soft); border: 1px solid var(--accent-line); }
+  .drop .orb .ic { width: 24px; height: 24px; }
+  .drop strong { display: block; font-size: 1.05rem; letter-spacing: -.01em; }
+  .drop span.sub { display: block; margin-top: 3px; color: var(--muted); font-size: .9rem; }
+  .drop .pick { display: inline-flex; margin-top: 15px; padding: 7px 15px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); font-weight: 650; font-size: .9rem; border: 1px solid var(--accent-edge); }
+  .perks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 15px; margin: 18px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: .82rem; }
+  .perks li { display: inline-flex; align-items: center; gap: 5px; }
+  .perks .ic { color: var(--teal-text); width: 14px; height: 14px; }
+
+  /* ---------- file row ---------- */
+  .file { display: flex; align-items: center; gap: 12px; }
+  .doc { flex: none; width: 36px; height: 45px; border-radius: 8px; display: grid; place-items: center; font-size: .6rem; font-weight: 800; letter-spacing: .05em;
+    color: var(--accent-text); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .file .info { min-width: 0; flex: 1; }
+  .file .name { font-weight: 650; font-size: .94rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .meta { color: var(--muted); font-size: .85rem; }
+  .file .meta b { color: var(--ink); font-weight: 650; }
+
+  /* ---------- target controls ---------- */
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .row label { font-weight: 650; font-size: .92rem; }
+  .num { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .88rem; }
+  .num input, .field { padding: 6px 10px; border: 1px solid var(--line2); border-radius: 9px; background: var(--bg); color: var(--ink); font: inherit; font-size: .9rem; }
+  .num input { width: 90px; font-weight: 700; text-align: right; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line2); background: var(--card); color: var(--muted); font-size: .8rem; font-weight: 650; cursor: pointer; transition: all .12s; }
+  .chip:hover:not(:disabled) { border-color: var(--accent-line); color: var(--ink); }
+  .chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
+  .chip:disabled { opacity: .4; cursor: not-allowed; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 13px 0 0; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 99px;
+    background: linear-gradient(to right, var(--accent) 0, var(--teal) var(--pct, 50%), var(--track) var(--pct, 50%)); }
+  input[type=range]::-moz-range-track { height: 5px; border-radius: 99px; background: var(--track); }
+  input[type=range]::-moz-range-progress { height: 5px; border-radius: 99px; background: linear-gradient(to right, var(--accent), var(--teal)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6.5px; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,.28); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); }
+  .ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: .72rem; margin-top: 2px; }
+  .caption { margin: 10px 0 0; color: var(--muted); font-size: .86rem; min-height: 1.4em; }
+  .caption b { color: var(--ink); font-weight: 650; }
+  .progress { height: 4px; border-radius: 99px; background: var(--track); overflow: hidden; margin-top: 12px; }
+  .progress i { display: block; height: 100%; width: 38%; background: var(--teal); border-radius: 99px; animation: slide 1.15s ease-in-out infinite; }
+  @keyframes slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+  .busy-note { margin: 7px 0 0; font-size: .8rem; color: var(--muted); }
+
+  /* ---------- result ---------- */
+  .result.stale .compare, .result.stale .bar, .result.stale .facts, .result.stale details, .result.stale .note { opacity: .4; }
+  .stalenote { margin: 0 0 12px; font-size: .84rem; color: var(--warn); background: var(--warn-bg); padding: 7px 11px; border-radius: 9px; }
+  .compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 10px; }
+  .compare > * { min-width: 0; }
+  .compare .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+  .compare .big { font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .compare .from .big { color: var(--muted); font-weight: 600; }
+  .compare .arrow { color: var(--muted); padding-bottom: 5px; }
+  .compare .arrow .ic { width: 19px; height: 19px; }
+  .bar { height: 7px; border-radius: 99px; background: var(--track); margin: 12px 0 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .pill { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--good-bg); color: var(--good); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 35%, transparent); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .note { margin: 12px 0 0; padding: 9px 12px; border-radius: 11px; font-size: .86rem; background: var(--info-bg); color: var(--info); }
+  .note.warn { background: var(--warn-bg); color: var(--warn); }
+  .note.err { background: var(--bad-bg); color: var(--bad); margin: 0; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+  .facts li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 9px; background: var(--bg2); font-size: .82rem; font-weight: 550; }
+  .facts .ic { color: var(--teal-text); width: 14px; height: 14px; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: var(--muted); font-size: .76rem; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; list-style: none; display: flex; align-items: center; gap: 5px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "›"; display: inline-block; transition: transform .15s; font-size: 1rem; }
+  details[open] summary::before { transform: rotate(90deg); }
+  ul.steps { list-style: none; padding: 0; margin: 7px 0 0; }
+  ul.steps li { color: var(--muted); font-size: .86rem; padding: 2px 0 2px 15px; position: relative; }
+  ul.steps li::before { content: ""; position: absolute; left: 3px; top: .75em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+  /* ---------- preview ---------- */
+  .viewer { position: sticky; top: 66px; height: calc(100vh - 86px); min-height: 480px; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+    background: var(--card); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow); }
+  .viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .seg { display: inline-flex; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 2px; gap: 2px; min-width: 0; max-width: 100%; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 8px; font-size: .82rem; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .seg button[aria-selected=true] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .vopen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .8rem; text-decoration: none; white-space: nowrap; }
+  .vopen:hover { color: var(--ink); text-decoration: underline; }
+  .vbody { position: relative; flex: 1; background: var(--bg2); }
+  .vbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+  .vempty { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; color: var(--muted); padding: 20px; font-size: .9rem; }
+  .vempty .ic { width: 30px; height: 30px; margin: 0 auto; opacity: .6; }
+
+  /* ---------- merge list ---------- */
+  .mlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .mcard { display: grid; grid-template-columns: auto 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px 8px 4px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--card); cursor: pointer; transition: border-color .15s, box-shadow .15s, opacity .15s; }
+  .mcard:hover { border-color: var(--line2); }
+  .mcard.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .mcard.dragging { opacity: .45; }
+  .mcard.err { border-color: var(--bad); }
+  .grip { width: 22px; height: 36px; border: 0; background: transparent; color: var(--muted); cursor: grab; display: grid; place-items: center; border-radius: 6px; padding: 0; }
+  .grip:hover { color: var(--ink); background: var(--bg2); }
+  .grip:active { cursor: grabbing; }
+  .thumb { position: relative; width: 52px; height: 68px; border-radius: 7px; overflow: hidden; background: var(--bg2); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; background: #fff; }
+  .thumb .num { position: absolute; top: 3px; left: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-size: .68rem; font-weight: 800; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .minfo { min-width: 0; }
+  .mname { font-weight: 650; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mmeta { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+  .mmeta.bad { color: var(--bad); }
+  .range { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: .76rem; color: var(--muted); }
+  .range input { width: 124px; max-width: 100%; padding: 3px 8px; border: 1px solid var(--line2); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; font-size: .8rem; }
+  .range input.bad { border-color: var(--bad); }
+  .mact { display: flex; flex-direction: column; gap: 1px; }
+  .iconbtn { width: 28px; height: 24px; padding: 0; border: 0; border-radius: 7px; display: grid; place-items: center; background: transparent; color: var(--muted); cursor: pointer; }
+  .iconbtn .ic { width: 15px; height: 15px; }
+  .iconbtn:hover:not(:disabled) { background: var(--bg2); color: var(--ink); }
+  .iconbtn.del:hover:not(:disabled) { background: var(--bad-bg); color: var(--bad); }
+  .iconbtn:disabled { opacity: .3; cursor: default; }
+  .skeleton { width: 100%; height: 100%; background: linear-gradient(100deg, var(--bg2) 30%, var(--line) 50%, var(--bg2) 70%); background-size: 220% 100%; animation: shimmer 1.2s linear infinite; }
+  @keyframes shimmer { to { background-position: -220% 0; } }
+  .hint { margin: 12px 2px 0; font-size: .8rem; color: var(--muted); }
+  .check { display: flex; align-items: center; gap: 9px; cursor: pointer; font-weight: 550; font-size: .92rem; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .namerow { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: .9rem; }
+  .namerow label { font-weight: 650; flex: none; }
+  .namerow .field { flex: 1; min-width: 0; }
+  .namerow span { color: var(--muted); }
+
+  /* ---------- toast ---------- */
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 50;
+    padding: 9px 14px; border-radius: 11px; background: var(--ink); color: var(--bg); font-size: .86rem; font-weight: 550; box-shadow: 0 10px 28px rgba(0,0,0,.3);
+    max-width: min(92vw, 480px); transition: opacity .2s, transform .2s; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+
+  /* ---------- responsive ---------- */
+  @media (min-width: 1500px) { body { font-size: 16px; } main, .top-in { max-width: 1280px; } .work.has { grid-template-columns: 480px minmax(0, 1fr); } }
+  @media (max-width: 1020px) {
+    .work.has { grid-template-columns: minmax(0, 1fr); max-width: 620px; margin: 0 auto; }
+    .viewer { order: 2; position: static; height: 72vh; min-height: 420px; }
+    .has-ws .intro { text-align: center; margin-left: auto; margin-right: auto; max-width: 620px; }
+  }
+  @media (max-width: 720px) { .local { display: none; } .theme { margin-left: auto; } }
+  @media (max-width: 560px) {
+    main { padding: 20px 12px 48px; }
+    .top-in { padding: 8px 12px; gap: 8px; }
+    .bname { display: none; }
+    .tabs { margin-left: 0; }
+    .card { padding: 15px; border-radius: 14px; }
+    .drop { padding: 32px 14px 28px; }
+    .viewer { height: 66vh; min-height: 380px; }
+    .viewer-head { flex-wrap: wrap; }
+    .seg { flex: 1; }
+    .seg button { flex: 1; }
+  }
+  @media (max-width: 440px) {
+    .mcard { grid-template-columns: auto 46px minmax(0, 1fr); gap: 8px; }
+    .mact { grid-column: 2 / -1; flex-direction: row; justify-content: flex-end; }
+    .thumb { width: 46px; height: 60px; }
+    .range input { width: 104px; }
+    .compare .big { font-size: 1.2rem; }
+    .btn.block { font-size: .92rem; }
+    .actions .btn { flex: 1 1 auto; }
+  }
+  @media (max-width: 380px) {
+    .tabs button { padding: 5px 9px; }
+    .tabs button .t { display: none; }
+    .perks { gap: 4px 12px; }
+    h1 { font-size: 1.3rem; }
+  }
+
+  /* ====================================================================== Clyro: liquid glass layer ====== */
+  .aura { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .aura i { position: absolute; border-radius: 50%; filter: blur(72px); opacity: var(--aura-op); will-change: transform; animation: drift 34s ease-in-out infinite alternate; }
+  .aura i:nth-child(1) { width: 46vmax; height: 46vmax; left: -14vmax; top: -16vmax; background: radial-gradient(circle at 35% 35%, var(--blob1), transparent 66%); }
+  .aura i:nth-child(2) { width: 46vmax; height: 46vmax; right: -14vmax; bottom: -18vmax; background: radial-gradient(circle at 55% 45%, var(--blob2), transparent 66%); animation-duration: 40s; animation-delay: -9s; animation-name: drift-corner; }
+  @keyframes drift-corner { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-3vmax, -2vmax, 0) scale(1.1); } }
+  @keyframes drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(5vmax, 3vmax, 0) scale(1.14); } }
+  @media (prefers-reduced-motion: reduce) { .aura i { animation: none; } }
+  .top, main, .site-foot { position: relative; z-index: 1; }
+  body { background: var(--bg); display: flex; flex-direction: column; }
+  main { flex: 1 0 auto; width: 100%; }
+  .site-foot { padding: 0 16px 14px; }
+  .foot-in { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+  .privacy { color: var(--muted); font-size: .8rem; }
+  .credit { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 4px 5px 4px 12px; border-radius: 99px; font-size: .8rem; color: var(--ink);
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)), var(--glass-2); border: 1px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .made { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; margin-right: 4px; white-space: nowrap; }
+  .heart { width: 14px; height: 14px; fill: var(--heart); flex: none; animation: beat 2.6s ease-in-out infinite; transform-origin: center; }
+  @keyframes beat { 0%, 62%, 100% { transform: scale(1); } 70% { transform: scale(1.22); } 80% { transform: scale(1); } 88% { transform: scale(1.14); } }
+  @media (prefers-reduced-motion: reduce) { .heart { animation: none; } }
+  .soc { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); text-decoration: none; transition: background .15s, color .15s, transform .1s; }
+  .soc svg { width: 15px; height: 15px; fill: currentColor; }
+  .soc:hover { color: var(--cyan-ink); background: var(--cyan); transform: translateY(-1px); }
+  .soc:active { transform: none; }
+  @media (max-width: 640px) { .foot-in { flex-direction: column; align-items: center; text-align: center; } .credit { margin-left: 0; } }
+
+  /* the glass surfaces: frosted, with a bright top edge and a soft sheen from the upper left */
+  .card, .drop, .viewer, .top-in {
+    background: linear-gradient(135deg, rgba(255,255,255,var(--sheen)), rgba(255,255,255,0) 42%), var(--glass);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7); backdrop-filter: blur(24px) saturate(1.7);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-low);
+  }
+  .drop { border: 1.5px dashed var(--glass-dash); }
+  .drop:hover, .drop.over { background: linear-gradient(135deg, rgba(255,255,255,.2), rgba(255,255,255,0) 45%), color-mix(in srgb, var(--cyan) 12%, var(--glass)); border-color: var(--cyan); }
+  .drop.over { border-color: var(--cyan); }
+  /* smaller pieces inside the panels: translucent, no extra blur (keeps scrolling smooth) */
+  .mcard, .chip, .facts li, .seg, .tabs, .theme, .btn:not(.primary):not(.cyan), .stalenote {
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)), var(--glass-2);
+    border-color: var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi);
+  }
+  .btn:not(.primary):not(.cyan):hover { background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), var(--glass-2); }
+  .tabs, .theme, .seg { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .num input, .field, .range input { background: var(--field); border-color: var(--glass-edge-in); box-shadow: inset 0 1px 2px rgba(0,0,0,.12); }
+  .viewer-head { border-bottom: 1px solid var(--glass-low); background: transparent; }
+  .vbody { background: rgba(0,0,0,.1); }
+  .tabs button[aria-selected=true], .seg button[aria-selected=true], .theme button[aria-pressed=true] {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 9%, transparent)), var(--glass-2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 1px var(--accent-line), 0 2px 8px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .chip[aria-pressed=true] { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 9%, transparent)), var(--glass-2); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+  .mcard.sel { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 22%, transparent), inset 0 1px 0 var(--glass-hi); border-color: var(--cyan); }
+  .toast { background: var(--glass-strong); color: var(--ink); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); border: 1px solid var(--glass-edge); }
+  .note { border: 1px solid var(--glass-edge-low); }
+  .card h2, .card-h h2 { color: color-mix(in srgb, var(--ink) 80%, var(--muted)); }
+
+  /* floating glass header */
+  .top { background: transparent; border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 10px 12px 0; top: 0; }
+  .top-in { border-radius: 18px; padding: 7px 12px; max-width: 1160px; }
+  .logo-img { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--cyan) 45%, transparent)); }
+  .brand { gap: 8px; }
+  .bname { font-weight: 800; font-size: 1.05rem; letter-spacing: -.03em; }
+  @media (min-width: 1021px) { .viewer { top: 84px; height: calc(100vh - 104px); } }
+
+  /* glossy buttons: peach (main) and cyan (download and secondary actions) */
+  .btn.primary, .btn.cyan {
+    position: relative; font-weight: 700;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 62%, #fff) 0%, var(--tone) 52%, color-mix(in srgb, var(--tone) 86%, #1d2025) 100%);
+    border: 1px solid color-mix(in srgb, var(--tone) 55%, #fff); color: var(--tone-ink);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(0,0,0,.1), 0 8px 22px color-mix(in srgb, var(--tone) 38%, transparent);
+    text-shadow: 0 1px 0 rgba(255,255,255,.28);
+  }
+  .btn.primary { --tone: var(--accent); --tone-ink: var(--accent-ink); }
+  .btn.cyan { --tone: var(--cyan); --tone-ink: var(--cyan-ink); }
+  .btn.primary:hover:not(:disabled), .btn.cyan:hover:not(:disabled) { filter: brightness(1.07) saturate(1.05); background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 62%, #fff) 0%, var(--tone) 52%, color-mix(in srgb, var(--tone) 86%, #1d2025) 100%); }
+  .btn.primary:disabled, .btn.cyan:disabled { box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
+  .btn.cyan-ghost { color: var(--cyan-text); border-color: color-mix(in srgb, var(--cyan) 50%, transparent);
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0)), color-mix(in srgb, var(--cyan) 12%, var(--glass-2)); box-shadow: inset 0 1px 0 var(--glass-hi); }
+  .btn.cyan-ghost:hover { background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.04)), color-mix(in srgb, var(--cyan) 22%, var(--glass-2)); }
+  input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--accent) 0, var(--cyan) var(--pct, 50%), var(--track) var(--pct, 50%)); box-shadow: inset 0 1px 2px rgba(0,0,0,.2); }
+  input[type=range]::-moz-range-progress { background: linear-gradient(to right, var(--accent), var(--cyan)); }
+  input[type=range]::-webkit-slider-thumb { background: linear-gradient(180deg, #fff, #e8f7fb); border-color: var(--cyan); box-shadow: 0 2px 8px rgba(0,0,0,.3), 0 0 0 3px color-mix(in srgb, var(--cyan) 22%, transparent); }
+  input[type=range]::-moz-range-thumb { background: #fff; border-color: var(--cyan); }
+  .bar i { background: linear-gradient(90deg, var(--accent), var(--cyan)); box-shadow: 0 0 12px color-mix(in srgb, var(--cyan) 45%, transparent); }
+  .progress i { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+  :focus-visible { outline-color: var(--cyan); }
+  .perks .ic { color: var(--cyan-text); }
+  .drop .orb { background: linear-gradient(160deg, color-mix(in srgb, var(--cyan) 22%, transparent), color-mix(in srgb, var(--accent) 16%, transparent)); border-color: var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 22px color-mix(in srgb, var(--cyan) 18%, transparent); color: var(--cyan-text); }
+  .drop .pick { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 62%, #fff), var(--accent) 55%, color-mix(in srgb, var(--accent) 86%, #1d2025)); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 8px 22px color-mix(in srgb, var(--accent) 34%, transparent); }
+
+  /* hero: the Clyro name, tagline and the four things it is for */
+  .hero { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 4px auto 22px; text-align: left; }
+  .hero-logo { width: 88px; height: 88px; object-fit: contain; flex: none; filter: drop-shadow(0 10px 26px color-mix(in srgb, var(--cyan) 42%, transparent)); }
+  .wordmark { margin: 0; font-size: clamp(2.1rem, 5.2vw, 3rem); font-weight: 850; letter-spacing: -.05em; line-height: 1;
+    background: linear-gradient(100deg, var(--wm-a) 10%, var(--wm-b) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+  .tagline { margin: 6px 0 0; font-size: clamp(1rem, 2.2vw, 1.2rem); font-weight: 650; letter-spacing: -.015em; }
+  body.working .hero { display: none; }
+  @media (max-width: 560px) { .hero { flex-direction: column; text-align: center; gap: 8px; margin-bottom: 16px; } .hero-logo { width: 72px; height: 72px; } .logo-img { width: 28px; height: 28px; } }
+
+  /* no blur support, or "reduce transparency" requested: calm, opaque panels instead */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root { --glass: var(--card-solid); --glass-2: var(--card-solid-2); --glass-strong: var(--card-solid); }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root { --glass: var(--card-solid); --glass-2: var(--card-solid-2); --glass-strong: var(--card-solid); }
+    .card, .drop, .viewer, .top-in, .tabs, .theme, .seg, .toast { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .aura { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="aura" aria-hidden="true"><i></i><i></i></div>
+
+<div class="banner" id="serverBanner" hidden role="alert">The Clyro server is stopped or older than this page. In the terminal where it runs, press <code>Ctrl+C</code>, then run <code>./run.sh</code> again.</div>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#compress" aria-label="Clyro home">
+      <img class="logo-img" src="/static/logo.png" alt="" width="32" height="32"><span class="bname">Clyro</span>
+    </a>
+    <nav class="tabs" role="tablist" aria-label="Tools">
+      <button type="button" role="tab" id="tab-compress" aria-selected="true" aria-controls="view-compress">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg><span class="t">Compress</span></button>
+      <button type="button" role="tab" id="tab-merge" aria-selected="false" aria-controls="view-merge">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M6 3v5a6 6 0 006 6 6 6 0 006-6V3M12 14v7"/></svg><span class="t">Merge</span></button>
+    </nav>
+    <span class="local"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Runs on your device</span>
+    <div class="theme" role="group" aria-label="Colour theme">
+      <button type="button" id="themeLight" aria-pressed="false" title="Light mode" aria-label="Light mode"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      <button type="button" id="themeDark" aria-pressed="false" title="Dark mode" aria-label="Dark mode"><svg class="ic" viewBox="0 0 24 24"><path d="M20.5 13.2A8.5 8.5 0 0110.8 3.5a8.5 8.5 0 109.7 9.7z"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <img class="hero-logo" src="/static/logo-384.png" alt="Clyro logo" width="88" height="88">
+    <div>
+      <p class="wordmark" aria-hidden="true">Clyro</p>
+      <p class="tagline">Your documents. Simplified.</p>
+    </div>
+  </section>
+  <!-- =============================== COMPRESS =============================== -->
+  <section id="view-compress" role="tabpanel" aria-labelledby="tab-compress">
+    <div class="intro" id="cIntro">
+      <h1>Compress a PDF</h1>
+      <p>Shrink it to the size you choose without turning pages into pictures. Text stays selectable and links keep working.</p>
+    </div>
+    <div class="work" id="cWork">
+      <div class="col">
+        <button class="drop" id="cDrop" type="button">
+          <div class="orb"><svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg></div>
+          <strong>Drop a PDF here</strong>
+          <span class="sub">or click to choose a file from your device</span>
+          <span class="pick">Choose PDF</span>
+          <ul class="perks">
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Text stays selectable</li>
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Links keep working</li>
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Never leaves your device</li>
+          </ul>
+        </button>
+
+        <section class="card" id="cFile" hidden>
+          <div class="file">
+            <div class="doc" aria-hidden="true">PDF</div>
+            <div class="info"><div class="name" id="cName"></div><div class="meta">Current size <b id="cSize"></b></div></div>
+            <button type="button" class="btn sm" id="cReplace">Replace file</button>
+          </div>
+        </section>
+
+        <section class="card" id="cSettings" hidden>
+          <div class="row">
+            <label for="cTarget">Target size</label>
+            <div class="num"><input id="cTarget" type="number" min="5" max="20000" step="1" inputmode="numeric"><span>KB</span></div>
+          </div>
+          <div class="chips" id="cChips" role="group" aria-label="Quick sizes"></div>
+          <input id="cSlider" type="range" min="0" max="1000" step="1" aria-label="Target size slider">
+          <div class="ticks" aria-hidden="true"><span id="cTickMin"></span><span id="cTickMax"></span></div>
+          <p class="caption" id="cCaption"></p>
+          <button type="button" class="btn primary block" id="cGo"><span id="cGoLabel">Compress</span></button>
+          <div id="cBusy" hidden><div class="progress" aria-hidden="true"><i></i></div><p class="busy-note">Working on it. Text-heavy files can take 10 to 15 seconds.</p></div>
+        </section>
+
+        <section class="card" id="cError" hidden role="alert"><div class="note err" id="cErrorText"></div></section>
+
+        <section class="card result" id="cResult" hidden aria-live="polite">
+          <p class="stalenote" id="cStale" hidden>You changed the target size. Press Compress again to apply it.</p>
+          <div class="compare">
+            <div class="from"><div class="lbl">Before</div><div class="big" id="cBefore"></div></div>
+            <div class="arrow" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14m-5-5l5 5-5 5"/></svg></div>
+            <div class="to"><div class="lbl">After</div><div class="big" id="cAfter"></div></div>
+          </div>
+          <div class="bar" aria-hidden="true"><i id="cBar"></i></div>
+          <span class="pill" id="cPill"></span>
+          <div class="note" id="cInfo" hidden></div>
+          <div class="note warn" id="cMiss" hidden></div>
+          <ul class="facts" id="cFacts"></ul>
+          <details><summary>What changed</summary><ul class="steps" id="cSteps"></ul></details>
+          <div class="actions">
+            <a class="btn cyan" id="cDownload" href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>Download</a>
+            <button type="button" class="btn cyan-ghost" id="cToMerge"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3v5a6 6 0 006 6 6 6 0 006-6V3M12 14v7"/></svg>Add to Merge</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="viewer" id="cViewer" hidden aria-label="PDF preview">
+        <div class="viewer-head"><div class="seg" role="tablist" aria-label="Which version to preview"></div><a class="vopen" target="_blank" rel="noopener">Open in new tab ↗</a></div>
+        <div class="vbody"><iframe title="PDF preview"></iframe>
+          <div class="vempty" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h7l4 4v12H7z"/><path d="M14 4v4h4"/></svg><div>Your preview appears here</div></div></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================================ MERGE ================================ -->
+  <section id="view-merge" role="tabpanel" aria-labelledby="tab-merge" hidden>
+    <div class="intro" id="mIntro">
+      <h1>Merge PDFs</h1>
+      <p>Combine several PDFs into one. Pages are copied as they are, so text, links and quality are untouched.</p>
+    </div>
+    <div class="work" id="mWork">
+      <div class="col">
+        <button class="drop" id="mDrop" type="button">
+          <div class="orb"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3v5a6 6 0 006 6 6 6 0 006-6V3M12 14v7"/></svg></div>
+          <strong>Drop PDFs here</strong>
+          <span class="sub">add as many as you like, then drag them into order</span>
+          <span class="pick">Choose PDFs</span>
+          <ul class="perks">
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Pick pages from each file</li>
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Links and bookmarks kept</li>
+            <li><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>Never leaves your device</li>
+          </ul>
+        </button>
+
+        <section class="card" id="mListCard" hidden>
+          <div class="card-h"><h2>Files <span id="mCount"></span></h2><button type="button" class="btn sm cyan-ghost" id="mAdd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add PDFs</button></div>
+          <ol class="mlist" id="mList"></ol>
+          <p class="hint">Drag the handle or use the arrows to reorder. To use only some pages, type them like <b>1-3, 5</b>.</p>
+        </section>
+
+        <section class="card" id="mOptions" hidden>
+          <label class="check"><input type="checkbox" id="mBookmarks" checked>Add a bookmark for each file</label>
+          <div class="namerow"><label for="mName">File name</label><input class="field" id="mName" value="merged" maxlength="80" spellcheck="false"><span>.pdf</span></div>
+          <p class="caption" id="mSummary"></p>
+          <button type="button" class="btn primary block" id="mGo"><span id="mGoLabel">Merge PDFs</span></button>
+          <div id="mBusy" hidden><div class="progress" aria-hidden="true"><i></i></div></div>
+        </section>
+
+        <section class="card" id="mError" hidden role="alert"><div class="note err" id="mErrorText"></div></section>
+
+        <section class="card result" id="mResult" hidden aria-live="polite">
+          <div class="compare">
+            <div class="from"><div class="lbl">Merged</div><div class="big" id="mRPages"></div></div>
+            <div class="arrow" aria-hidden="true"></div>
+            <div class="to"><div class="lbl">File size</div><div class="big" id="mRSize"></div></div>
+          </div>
+          <ul class="facts" id="mFacts"></ul>
+          <div class="actions">
+            <a class="btn cyan" id="mDownload" href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>Download</a>
+            <button type="button" class="btn cyan-ghost" id="mToCompress"><svg class="ic" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>Compress this file</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="viewer" id="mViewer" hidden aria-label="PDF preview">
+        <div class="viewer-head"><div class="seg" role="tablist" aria-label="Which file to preview"></div><a class="vopen" target="_blank" rel="noopener">Open in new tab ↗</a></div>
+        <div class="vbody"><iframe title="PDF preview"></iframe>
+          <div class="vempty" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M7 4h7l4 4v12H7z"/><path d="M14 4v4h4"/></svg><div>Your preview appears here</div></div></div>
+      </aside>
+    </div>
+  </section>
+
+</main>
+<footer class="site-foot">
+  <div class="foot-in">
+    <span class="privacy">Runs entirely on your device · nothing is sent over the internet</span>
+    <div class="credit">
+      <span class="made"><svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Made with Love by Morbius</span>
+      <a class="soc" href="https://github.com/Morbius00" target="_blank" rel="noopener noreferrer" aria-label="Morbius on GitHub" title="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 015.78 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0023.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a>
+      <a class="soc" href="https://www.linkedin.com/in/raj-saha00" target="_blank" rel="noopener noreferrer" aria-label="Raj Saha on LinkedIn" title="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 110-4.12 2.06 2.06 0 010 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg></a>
+    </div>
+  </div>
+</footer>
+<input id="cFileInput" type="file" accept="application/pdf,.pdf" hidden>
+<input id="mFileInput" type="file" accept="application/pdf,.pdf" multiple hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(n < 10240 ? 2 : 1)} KB` : `${(n / 1048576).toFixed(2)} MB`;
+  const fmtKB = kb => kb >= 1024 ? `${(kb / 1024).toFixed(kb >= 10240 ? 0 : 1)} MB` : `${Math.round(kb)} KB`;
+  const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
+  const isPDF = f => /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+  const FIT = "#toolbar=0&navpanes=0&view=FitH";
+  const I = {
+    tick: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+    up: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>',
+    down: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+    del: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/></svg>',
+    grip: '<svg class="ic" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>',
+    warn: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 8v5m0 3.5v.01M10.3 4.2L2.7 17.5A2 2 0 004.4 20.5h15.2a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0z"/></svg>',
+  };
+
+  /* ------------------------------------------------------------------ light / dark */
+  const root = document.documentElement, metaTheme = document.querySelector('meta[name="theme-color"]');
+  const systemDark = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
+  function paintTheme() {
+    const t = root.dataset.theme;
+    $("themeLight").setAttribute("aria-pressed", String(t === "light")); $("themeDark").setAttribute("aria-pressed", String(t === "dark"));
+    if (metaTheme) metaTheme.content = t === "dark" ? "#1d2025" : "#f7f3ee";
+  }
+  function chooseTheme(t) {
+    root.dataset.theme = t; paintTheme();
+    try { localStorage.setItem("pdftools-theme", t); } catch (e) {}
+  }
+  $("themeLight").addEventListener("click", () => chooseTheme("light"));
+  $("themeDark").addEventListener("click", () => chooseTheme("dark"));
+  if (systemDark) systemDark.addEventListener("change", e => {   // follow the system until you pick one yourself
+    let saved = null; try { saved = localStorage.getItem("pdftools-theme"); } catch (err) {}
+    if (!saved) { root.dataset.theme = e.matches ? "dark" : "light"; paintTheme(); }
+  });
+  paintTheme();
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 4200);
+  }
+
+  /* ------------------------------------------------------------------ preview panel */
+  function Viewer(root) {
+    const seg = root.querySelector(".seg"), open = root.querySelector(".vopen"),
+          frame = root.querySelector("iframe"), empty = root.querySelector(".vempty");
+    let tabs = [], active = null;
+    function paint() {
+      seg.innerHTML = "";
+      for (const t of tabs) {
+        const b = el("button", null, esc(t.label)); b.type = "button"; b.setAttribute("role", "tab");
+        b.setAttribute("aria-selected", String(t.key === active)); b.disabled = !t.url;
+        b.addEventListener("click", () => { active = t.key; paint(); });
+        seg.appendChild(b);
+      }
+      const cur = tabs.find(t => t.key === active);
+      if (cur && cur.url) {
+        if (frame.dataset.src !== cur.url) { frame.src = cur.url + FIT; frame.dataset.src = cur.url; }
+        frame.hidden = false; empty.hidden = true; open.hidden = false; open.href = cur.url;
+      } else {
+        frame.hidden = true; frame.removeAttribute("src"); delete frame.dataset.src; empty.hidden = false; open.hidden = true;
+      }
+    }
+    return {
+      set(list, key) { tabs = list; active = key ?? (list.find(t => t.url) || list[0] || {}).key ?? null; paint(); },
+    };
+  }
+
+  /* ------------------------------------------------------------------ tabs */
+  const views = { compress: $("view-compress"), merge: $("view-merge") };
+  let currentTab = "compress";
+  function go(name, remember = true) {
+    if (!views[name]) name = "compress";
+    currentTab = name;
+    for (const [k, v] of Object.entries(views)) { v.hidden = k !== name; $("tab-" + k).setAttribute("aria-selected", String(k === name)); }
+    document.title = (name === "merge" ? "Merge PDFs" : "Compress a PDF") + " · Clyro";
+    refreshHero();
+    if (remember) history.replaceState(null, "", "#" + name);
+  }
+  function refreshHero() {   // the big Clyro intro only shows until you have a file open
+    const w = currentTab === "merge" ? $("mWork") : $("cWork");
+    document.body.classList.toggle("working", w.classList.contains("has"));
+  }
+  for (const k of Object.keys(views)) $("tab-" + k).addEventListener("click", () => go(k));
+  document.querySelector(".brand").addEventListener("click", e => { e.preventDefault(); go("compress"); });
+
+  // a 404 with no JSON body means the running server is older than this page, not that the PDF is bad
+  const STALE = "The server is out of date, so it can't do this yet. In the terminal where it runs, press Ctrl+C, then run ./run.sh again.";
+  const failure = (res, data, fallback) => data.error || (res.status === 404 || res.status === 405 ? STALE : fallback);
+
+  async function fetchAsFile(url, name) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("That file has expired. Run it again.");
+    return new File([await r.blob()], name, { type: "application/pdf" });
+  }
+
+  /* ================================================================== COMPRESS */
+  const C = (() => {
+    const MIN_KB = 5, HARD_MAX_KB = 20000, PRESETS = [50, 100, 200, 500, 1000, 2000];
+    let file = null, maxKB = 1000, runId = 0, busy = false, origURL = null, resultId = null, resultName = "", newURL = null, origSize = "", newSize = "";
+    const viewer = Viewer($("cViewer"));
+
+    const toKB = t => {
+      const v = MIN_KB * Math.pow(maxKB / MIN_KB, t / 1000);
+      return v < 100 ? Math.round(v) : v < 1000 ? Math.round(v / 5) * 5 : Math.round(v / 10) * 10;
+    };
+    const toT = kb => Math.round(1000 * Math.log(Math.min(Math.max(kb, MIN_KB), maxKB) / MIN_KB) / Math.log(maxKB / MIN_KB));
+    const targetKB = () => { const v = parseFloat($("cTarget").value); return Number.isFinite(v) ? Math.min(Math.max(v, MIN_KB), HARD_MAX_KB) : 100; };
+
+    function show(which) { for (const id of ["cError", "cResult"]) $(id).hidden = id !== which; }
+    function layout(has) {
+      $("cWork").classList.toggle("has", has); $("view-compress").classList.toggle("has-ws", has);
+      $("cDrop").hidden = has; $("cFile").hidden = !has; $("cSettings").hidden = !has; $("cViewer").hidden = !has;
+      refreshHero();
+    }
+    function paintTarget() {
+      const s = $("cSlider"); s.style.setProperty("--pct", (s.value / 10) + "%"); s.setAttribute("aria-valuetext", fmtKB(targetKB()));
+      for (const b of $("cChips").children) b.setAttribute("aria-pressed", String(+b.dataset.kb === Math.round(targetKB())));
+      const t = targetKB() * 1024, cur = file.size;
+      $("cCaption").innerHTML = t >= cur
+        ? `That's bigger than the file already is, so it will only be cleaned up, with no quality loss.`
+        : `The file will be shrunk to about <b>${fmtKB(targetKB())}</b> (${Math.round((1 - t / cur) * 100)}% smaller than now), keeping the best quality that fits.`;
+    }
+    function markStale() {
+      if (!$("cResult").hidden && !busy) { $("cResult").classList.add("stale"); $("cStale").hidden = false; $("cGoLabel").textContent = "Compress again"; }
+    }
+    function setBusy(on) {
+      busy = on; $("cGo").disabled = on; $("cReplace").disabled = on; $("cBusy").hidden = !on;
+      $("cGoLabel").innerHTML = on ? '<span class="spin" style="display:inline-block;vertical-align:-3px;margin-right:8px"></span>Compressing…' : "Compress";
+    }
+    function buildChips() {
+      const box = $("cChips"); box.innerHTML = "";
+      for (const kb of PRESETS) {
+        const b = el("button", "chip", fmtKB(kb)); b.type = "button"; b.dataset.kb = kb;
+        b.disabled = kb * 1024 >= file.size;
+        b.addEventListener("click", () => { $("cTarget").value = kb; $("cTarget").dispatchEvent(new Event("input")); });
+        box.appendChild(b);
+      }
+    }
+
+    function setFile(f) {
+      if (!f) return;
+      if (!isPDF(f)) { $("cErrorText").textContent = "That doesn't look like a PDF. Please choose a .pdf file."; show("cError"); return; }
+      runId++; setBusy(false);
+      file = f; maxKB = Math.max(50, Math.ceil(f.size / 1024));
+      $("cTickMin").textContent = fmtKB(MIN_KB); $("cTickMax").textContent = fmtKB(maxKB);
+      const def = Math.min(100, maxKB);
+      $("cTarget").value = def; $("cSlider").value = toT(def);
+      $("cName").textContent = f.name; $("cSize").textContent = fmt(f.size);
+      $("cGoLabel").textContent = "Compress"; $("cResult").classList.remove("stale"); $("cStale").hidden = true;
+      if (origURL) URL.revokeObjectURL(origURL);
+      origURL = URL.createObjectURL(f); newURL = null; resultId = null; origSize = fmt(f.size); newSize = "";
+      layout(true); buildChips(); show(""); paintTarget(); paintViewer("orig");
+    }
+    function paintViewer(active) {
+      viewer.set([
+        { key: "orig", label: origSize ? `Original · ${origSize}` : "Original", url: origURL },
+        { key: "new", label: newSize ? `Compressed · ${newSize}` : "Compressed", url: newURL },
+      ], active);
+    }
+
+    async function compress() {
+      if (!file || busy) return;
+      const my = ++runId; setBusy(true); show("");
+      const body = new FormData(); body.append("file", file); body.append("target_kb", String(targetKB()));
+      try {
+        const res = await fetch("/api/compress", { method: "POST", body });
+        const data = await res.json().catch(() => ({}));
+        if (my !== runId) return;
+        if (!res.ok) throw new Error(failure(res, data, "Something went wrong."));
+        setBusy(false); render(data); $("cGoLabel").textContent = "Compress again";
+      } catch (e) {
+        if (my !== runId) return;
+        setBusy(false); $("cErrorText").textContent = e.message; show("cError");
+      }
+    }
+
+    function render(d) {
+      $("cBefore").textContent = fmt(d.original_bytes); $("cAfter").textContent = fmt(d.final_bytes);
+      const saved = Math.max(0, Math.round((1 - d.final_bytes / d.original_bytes) * 100));
+      $("cPill").textContent = d.original_bytes <= d.final_bytes ? "Already as small as it safely gets"
+        : d.reached_target ? `${saved}% smaller` : `${saved}% smaller · over target`;
+      $("cPill").classList.toggle("warn", !d.reached_target);
+      $("cBar").style.width = Math.max(2, Math.min(100, d.final_bytes / d.original_bytes * 100)) + "%";
+
+      const info = $("cInfo"), miss = $("cMiss");
+      miss.hidden = d.reached_target; info.hidden = true;
+      if (!d.reached_target) {
+        const top = Object.entries(d.breakdown).sort((x, y) => y[1] - x[1])[0][0];
+        const why = { images: "images are already at the lowest quality I allow", fonts: "most of what remains is embedded fonts",
+                      other: "most of what remains is vector artwork and page content" }[top];
+        miss.textContent = `Couldn't get under ${fmtKB(d.target_bytes / 1024)} without hurting quality: ${why}. This is the best result I can give you without visible quality loss.`;
+      } else if (d.original_bytes <= d.target_bytes) {
+        info.textContent = `Your file was already under ${fmtKB(d.target_bytes / 1024)}, so it was only cleaned up. Nothing was given up.`; info.hidden = false;
+      } else if (d.final_bytes < 0.9 * d.target_bytes) {
+        info.textContent = `Landed at ${fmt(d.final_bytes)} for your ${fmtKB(d.target_bytes / 1024)} target. At this size the file is already at the highest quality it can have, so there is nothing more to spend the extra room on.`; info.hidden = false;
+      }
+      const facts = [`${plural(d.text_chars, "character")} of real, selectable text`];
+      if (d.links) facts.push(`${plural(d.links, "link")} still clickable`);
+      facts.push(`${plural(d.pages, "page")} at the same size`);
+      $("cFacts").innerHTML = facts.map(t => `<li>${I.tick}<span>${t}</span></li>`).join("");
+      $("cSteps").innerHTML = d.steps.map(t => `<li>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</li>`).join("");
+      $("cDownload").href = `/api/pdf/${d.id}?download=1`; $("cDownload").setAttribute("download", d.filename);
+      resultId = d.id; resultName = d.filename;
+      $("cResult").classList.remove("stale"); $("cStale").hidden = true; show("cResult");
+      newURL = `/api/pdf/${d.id}`; newSize = fmt(d.final_bytes); paintViewer("new");
+    }
+
+    // wiring
+    $("cDrop").addEventListener("click", () => $("cFileInput").click());
+    $("cReplace").addEventListener("click", () => $("cFileInput").click());
+    $("cFileInput").addEventListener("change", e => { setFile(e.target.files[0]); e.target.value = ""; });
+    $("cGo").addEventListener("click", compress);
+    $("cTarget").addEventListener("keydown", e => { if (e.key === "Enter") compress(); });
+    $("cSlider").addEventListener("input", () => { $("cTarget").value = toKB(+$("cSlider").value); paintTarget(); markStale(); });
+    $("cTarget").addEventListener("input", () => { $("cSlider").value = toT(targetKB()); paintTarget(); markStale(); });
+    $("cToMerge").addEventListener("click", async () => {
+      try { const f = await fetchAsFile(`/api/pdf/${resultId}`, resultName); go("merge"); M.add([f]); } catch (e) { toast(e.message); }
+    });
+    return { setFile, get busy() { return busy; }, dropzone: $("cDrop") };
+  })();
+
+  /* ================================================================== MERGE */
+  const M = (() => {
+    let items = [], seq = 0, selected = null, merged = null, busy = false, dragId = null;
+    const viewer = Viewer($("mViewer"));
+    const list = $("mList");
+
+    const countPages = (spec, max) => {
+      spec = (spec || "").trim().toLowerCase();
+      if (!spec || spec === "all" || spec === "*") return max;
+      let n = 0;
+      for (const part of spec.split(/\s*,\s*/)) {
+        const m = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(part); if (!m) return null;
+        const a = +m[1], b = +(m[2] ?? m[1]);
+        if (a < 1 || b < a || b > max) return null;
+        n += b - a + 1;
+      }
+      return n;
+    };
+    const used = it => it.status === "ok" ? countPages(it.range, it.pages) : 0;
+    const valid = it => it.status === "ok" && used(it) !== null;
+    const canMerge = () => !busy && items.length >= 2 && items.every(valid);
+
+    function layout() {
+      const has = items.length > 0;
+      $("mWork").classList.toggle("has", has); $("view-merge").classList.toggle("has-ws", has);
+      $("mDrop").hidden = has; $("mListCard").hidden = !has; $("mOptions").hidden = !has; $("mViewer").hidden = !has;
+      refreshHero();
+    }
+    function invalidate() { merged = null; $("mResult").hidden = true; $("mError").hidden = true; }
+    function summary() {
+      const ok = items.filter(valid);
+      const pages = ok.reduce((n, it) => n + used(it), 0), bytes = ok.reduce((n, it) => n + it.size, 0);
+      const bad = items.filter(it => it.status === "error" || (it.status === "ok" && !valid(it)));
+      $("mCount").textContent = items.length ? `(${items.length})` : "";
+      if (bad.length) $("mSummary").innerHTML = `<span style="color:var(--bad)">Fix or remove ${plural(bad.length, "file")} with a problem to continue.</span>`;
+      else if (items.length < 2) $("mSummary").textContent = "Add at least one more PDF to merge.";
+      else $("mSummary").innerHTML = `<b>${plural(items.length, "file")}</b> · <b>${plural(pages, "page")}</b> · about ${fmt(bytes)} before merging`;
+      $("mGo").disabled = !canMerge();
+    }
+
+    function card(it, idx) {
+      const li = el("li", "mcard" + (it.id === selected ? " sel" : "") + (it.status === "error" ? " err" : ""));
+      li.dataset.id = it.id;
+      const grip = el("button", "grip", I.grip); grip.type = "button"; grip.title = "Drag to reorder"; grip.setAttribute("aria-label", `Drag ${it.name} to reorder`);
+      grip.addEventListener("mousedown", () => { li.draggable = true; });
+      grip.addEventListener("touchstart", () => { li.draggable = true; }, { passive: true });
+      const thumb = el("div", "thumb");
+      if (it.status === "loading") thumb.appendChild(el("div", "skeleton"));
+      else if (it.status === "error") thumb.innerHTML = I.warn;
+      else { const img = el("img"); img.alt = ""; img.src = it.thumb; thumb.appendChild(img); }
+      thumb.appendChild(el("span", "num", String(idx + 1)));
+      const info = el("div", "minfo");
+      const nm = el("div", "mname", esc(it.name)); nm.title = it.name; info.appendChild(nm);
+      if (it.status === "loading") info.appendChild(el("div", "mmeta", "Reading…"));
+      else if (it.status === "error") info.appendChild(el("div", "mmeta bad", esc(it.error)));
+      else {
+        info.appendChild(el("div", "mmeta", `${plural(it.pages, "page")} · ${fmt(it.size)}`));
+        const r = el("label", "range", "Pages"); const inp = el("input"); inp.value = it.range; inp.placeholder = "all, or 1-3, 5";
+        inp.setAttribute("aria-label", `Pages to use from ${it.name}`); inp.spellcheck = false;
+        inp.classList.toggle("bad", !valid(it));
+        inp.addEventListener("input", () => { it.range = inp.value; inp.classList.toggle("bad", !valid(it)); invalidate(); summary(); });
+        inp.addEventListener("click", e => e.stopPropagation());
+        r.appendChild(inp); info.appendChild(r);
+      }
+      const act = el("div", "mact");
+      const mk = (cls, html, label, fn, off) => { const b = el("button", "iconbtn " + cls, html); b.type = "button"; b.title = label; b.setAttribute("aria-label", label); b.disabled = !!off;
+        b.addEventListener("click", e => { e.stopPropagation(); fn(); }); return b; };
+      act.append(mk("", I.up, "Move up", () => move(it.id, -1), idx === 0), mk("", I.down, "Move down", () => move(it.id, 1), idx === items.length - 1),
+                 mk("del", I.del, `Remove ${it.name}`, () => remove(it.id)));
+      li.append(grip, thumb, info, act);
+      li.addEventListener("click", () => select(it.id));
+      return li;
+    }
+    function render() {
+      list.innerHTML = ""; items.forEach((it, i) => list.appendChild(card(it, i)));
+      layout(); summary(); paintViewer();
+    }
+    function paintViewer() {
+      const sel = items.find(i => i.id === selected);
+      viewer.set([
+        { key: "file", label: sel ? `File ${items.indexOf(sel) + 1} · ${sel.name.length > 22 ? sel.name.slice(0, 20) + "…" : sel.name}` : "Selected file", url: sel ? sel.url : null },
+        { key: "merged", label: merged ? `Merged · ${fmt(merged.bytes)}` : "Merged result", url: merged ? `/api/pdf/${merged.id}` : null },
+      ], merged ? "merged" : "file");
+    }
+    function select(id) { selected = id; for (const li of list.children) li.classList.toggle("sel", +li.dataset.id === id); paintViewer(); }
+    function move(id, d) {
+      const i = items.findIndex(x => x.id === id), j = i + d;
+      if (j < 0 || j >= items.length) return;
+      [items[i], items[j]] = [items[j], items[i]]; invalidate(); render();
+    }
+    function remove(id) {
+      const it = items.find(x => x.id === id); if (!it) return;
+      URL.revokeObjectURL(it.url); items = items.filter(x => x.id !== id);
+      if (selected === id) selected = items.length ? items[0].id : null;
+      invalidate(); render();
+    }
+
+    async function inspect(it) {
+      const fd = new FormData(); fd.append("file", it.file);
+      try {
+        const r = await fetch("/api/inspect", { method: "POST", body: fd });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(failure(r, d, "Couldn't read this PDF."));
+        Object.assign(it, { pages: d.pages, thumb: d.thumb, status: "ok" });
+      } catch (e) { it.status = "error"; it.error = e.message; }
+      if (items.includes(it)) render();
+    }
+    function add(files) {
+      const all = [...files], pdfs = all.filter(isPDF);
+      if (pdfs.length < all.length) toast(`${plural(all.length - pdfs.length, "file")} skipped because it isn't a PDF.`);
+      if (!pdfs.length) return;
+      const fresh = pdfs.map(f => ({ id: ++seq, file: f, name: f.name, size: f.size, status: "loading", url: URL.createObjectURL(f), range: "" }));
+      items.push(...fresh); if (selected === null) selected = fresh[0].id;
+      invalidate(); render(); fresh.forEach(inspect);
+    }
+
+    async function doMerge() {
+      if (!canMerge()) return;
+      busy = true; $("mGo").disabled = true; $("mBusy").hidden = false; $("mError").hidden = true; $("mResult").hidden = true;
+      $("mGoLabel").innerHTML = '<span class="spin" style="display:inline-block;vertical-align:-3px;margin-right:8px"></span>Merging…';
+      const fd = new FormData();
+      for (const it of items) fd.append("files", it.file, it.name);
+      fd.append("pages", JSON.stringify(items.map(it => it.range.trim())));
+      fd.append("bookmarks", $("mBookmarks").checked ? "1" : "0");
+      fd.append("name", $("mName").value);
+      try {
+        const r = await fetch("/api/merge", { method: "POST", body: fd });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(failure(r, d, "Something went wrong while merging."));
+        merged = d; $("mRPages").textContent = plural(d.pages, "page"); $("mRSize").textContent = fmt(d.bytes);
+        $("mFacts").innerHTML = [`${plural(d.files.length, "file")} combined in your order`, "Text, links and images untouched"].map(t => `<li>${I.tick}<span>${t}</span></li>`).join("");
+        $("mDownload").href = `/api/pdf/${d.id}?download=1`; $("mDownload").setAttribute("download", d.filename);
+        $("mResult").hidden = false; paintViewer();
+        $("mResult").scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch (e) { $("mErrorText").textContent = e.message; $("mError").hidden = false; }
+      busy = false; $("mBusy").hidden = true; $("mGoLabel").textContent = "Merge PDFs"; summary();
+    }
+
+    // drag to reorder (from the handle); files dragged in from outside are handled by the page-level drop
+    list.addEventListener("dragstart", e => {
+      const li = e.target.closest(".mcard"); if (!li || !li.draggable) return;
+      dragId = li.dataset.id; li.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId);
+    });
+    list.addEventListener("dragover", e => {
+      if (dragId === null) return; e.preventDefault();
+      const over = e.target.closest(".mcard"); if (!over || over.dataset.id === dragId) return;
+      const dragged = list.querySelector(`[data-id="${dragId}"]`), r = over.getBoundingClientRect();
+      list.insertBefore(dragged, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+    });
+    list.addEventListener("dragend", () => {
+      if (dragId === null) return;
+      const order = [...list.children].map(li => +li.dataset.id); dragId = null;
+      items.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)); invalidate(); render();
+    });
+    list.addEventListener("drop", e => { if (dragId !== null) e.preventDefault(); });
+
+    $("mDrop").addEventListener("click", () => $("mFileInput").click());
+    $("mAdd").addEventListener("click", () => $("mFileInput").click());
+    $("mFileInput").addEventListener("change", e => { add(e.target.files); e.target.value = ""; });
+    $("mGo").addEventListener("click", doMerge);
+    $("mBookmarks").addEventListener("change", invalidate);
+    $("mName").addEventListener("input", () => { $("mResult").hidden = true; merged = null; paintViewer(); });
+    $("mToCompress").addEventListener("click", async () => {
+      try { const f = await fetchAsFile(`/api/pdf/${merged.id}`, merged.filename); go("compress"); C.setFile(f); } catch (e) { toast(e.message); }
+    });
+    return { add, dropzone: $("mDrop") };
+  })();
+
+  /* ------------------------------------------------------------------ drag and drop from the desktop, anywhere on the page */
+  const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+  window.addEventListener("dragover", e => { if (!hasFiles(e)) return; e.preventDefault(); document.body.classList.add("dragging"); (currentTab === "merge" ? M : C).dropzone.classList.add("over"); });
+  window.addEventListener("dragleave", e => { if (e.relatedTarget) return; document.body.classList.remove("dragging"); M.dropzone.classList.remove("over"); C.dropzone.classList.remove("over"); });
+  window.addEventListener("drop", e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); document.body.classList.remove("dragging"); M.dropzone.classList.remove("over"); C.dropzone.classList.remove("over");
+    const files = [...e.dataTransfer.files]; if (!files.length) return;
+    if (currentTab === "merge") M.add(files); else if (!C.busy) C.setFile(files[0]);
+  });
+
+  fetch("/api/ping").then(r => { if (!r.ok) throw new Error("old server"); }).catch(() => { $("serverBanner").hidden = false; });
+
+  go(location.hash === "#merge" ? "merge" : "compress", false);
+  window.addEventListener("hashchange", () => go(location.hash === "#merge" ? "merge" : "compress", false));
+})();
+</script>
+</body>
+</html>
